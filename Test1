@@ -1,0 +1,24 @@
+package main
+import ("fmt")
+
+
+func main() {
+	int sum = 0
+	for {
+		var i int 
+
+		fmt.Print("Type a number: ")
+		fmt.Scan(&i)
+		sum += i
+		
+		var m int 
+
+		fmt.Print("Insert 1 to exit. Anything else to continue: ")
+		fmt.scan(&m)
+		if (m == 1){
+			break
+		}
+
+	}
+	fmt.Print("The sum of your numbers is :", sum)
+}

@@ -1,0 +1,3 @@
+id,username,passwordHash,nonce
+1,alice,$hash$,abc123
+2,bob,$hash$,xyz999

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!--
+    Character encoding + mobile responsiveness.
+    viewport ensures proper scaling on phones/tablets.
+  -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Timed API Call Button</title>
+
+  <style>
+    /*
+      ==============================
+      CSS VARIABLES (THEME CONTROL)
+      ==============================
+      Using CSS variables allows:
+      - Easy color tweaking
+      - Centralized design control
+      - Better maintainability
+    */
+    :root {
+      --primary: #4f46e5;
+      --primary-dark: #3730a3;
+      --danger: #dc2626;
+      --bg: #0f172a;
+      --card: #020617;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+    }
+
+    /*
+      Reset box sizing to prevent padding-related
+      layout bugs across browsers.
+    */
+    * {
+      box-sizing: border-box;
+    }
+
+    /*
+      Page-level styling:
+      - Full viewport height
+      - Centered content
+      - Dark gradient background
+    */
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top, #1e293b, var(--bg));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text);
+    }
+
+    /*
+      Card container:
+      - Responsive width
+      - Soft shadow
+      - Rounded edges
+    */
+    .card {
+      width: min(92%, 420px); /* responsive clamp */
+      background: linear-gradient(180deg, #020617, #020617cc);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 1.25rem;
+      margin-bottom: 8px;
+    }
+
+    p {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+
+    /*
+      Primary action button
+      Includes visual press/release feedback
+    */
+    button {
+      width: 100%;
+      padding: 16px;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      color: white;
+      background: linear-gradient(180deg, var(--primary), var(--primary-dark));
+      transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.2s;
+      box-shadow: 0 10px 30px rgba(79,70,229,0.4);
+    }
+
+    /*
+      Physical "pressed" feel
+    */
+    button:active {
+      transform: translateY(2px);
+      box-shadow: 0 5px 15px rgba(79,70,229,0.3);
+    }
+
+    /*
+      Disabled state prevents double-clicks
+    */
+    button[disabled] {
+      cursor: not-allowed;
+      opacity: 0.8;
+    }
+
+    /*
+      Loading spinner:
+      Hidden by default
+      Shown only during API activity
+    */
+    .spinner {
+      margin: 20px auto 12px;
+      width: 36px;
+      height: 36px;
+      border: 4px solid rgba(255,255,255,0.2);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      display: none;
+    }
+
+    /*
+      Simple infinite rotation animation
+    */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /*
+      Status text area:
+      Reserved height prevents layout jumping
+    */
+    .status {
+      min-height: 1.4em;
+      font-size: 0.85rem;
+      margin-top: 10px;
+      color: var(--muted);
+    }
+
+    /*
+      Error text override
+    */
+    .error {
+      color: var(--danger);
+    }
+
+    /*
+      Small-screen adjustments
+    */
+    @media (max-width: 480px) {
+      h1 { font-size: 1.1rem; }
+      button { font-size: 0.95rem; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!--
+    Main UI container
+  -->
+  <div class="card">
+    <h1>Timed API Trigger</h1>
+    <p>Press the button to call the API for exactly 3 seconds.</p>
+
+    <!--
+      Loading indicator
+      Visibility controlled via JavaScript
+    -->
+    <div class="spinner" id="spinner"></div>
+
+    <!--
+      Action button
+    -->
+    <button id="apiButton">
+      HOLD TO CALL API
+    </button>
+
+    <!--
+      Status / error messages appear here
+    -->
+    <div class="status" id="status"></div>
+  </div>
+
+<script>
+  /*
+    ==============================
+    CONFIGURATION SECTION
+    ==============================
+    Change only these values to adapt behavior.
+  */
+
+  // API endpoint to call
+  const API_ENDPOINT = "https://www.google.com/";
+
+  // Duration (in milliseconds) before aborting the request
+  const CALL_DURATION_MS = 3000;
+
+  /*
+    ==============================
+    DOM ELEMENT REFERENCES
+    ==============================
+  */
+  const button = document.getElementById("apiButton");
+  const spinner = document.getElementById("spinner");
+  const status = document.getElementById("status");
+
+  /*
+    ==============================
+    STATE MANAGEMENT
+    ==============================
+    Prevents:
+    - Double clicks
+    - Overlapping requests
+  */
+  let isRunning = false;
+  let abortController = null;
+  let timeoutId = null;
+
+  /*
+    ==============================
+    MAIN CLICK HANDLER
+    ==============================
+  */
+  button.addEventListener("click", async () => {
+
+    // Prevent starting another call while one is active
+    if (isRunning) return;
+
+    // Handle offline edge-case early
+    if (!navigator.onLine) {
+      status.textContent = "No internet connection.";
+      status.className = "status error";
+      return;
+    }
+
+    // Lock UI
+    isRunning = true;
+    button.disabled = true;
+    spinner.style.display = "block";
+    status.className = "status";
+    status.textContent = "Calling API…";
+
+    /*
+      AbortController allows us to
+      forcefully stop the fetch request
+    */
+    abortController = new AbortController();
+
+    /*
+      Enforce a hard 3-second limit
+      Even if the server never responds
+    */
+    timeoutId = setTimeout(() => {
+      abortController.abort();
+    }, CALL_DURATION_MS);
+
+    try {
+      /*
+        API request
+        signal connects fetch to AbortController
+      */
+      const response = await fetch(API_ENDPOINT, {
+        method: "GET",
+        signal: abortController.signal,
+        headers: {
+          "Accept": "application/json"
+        }
+      });
+
+      // HTTP-level error handling
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      status.textContent = "API call completed successfully.";
+
+    } catch (error) {
+
+      // Expected timeout behavior
+      if (error.name === "AbortError") {
+        status.textContent = "Communication stopped after 3 seconds.";
+      }
+
+      // Unexpected failures
+      else {
+        status.textContent = "Error: " + error.message;
+        status.className = "status error";
+      }
+
+    } finally {
+      /*
+        Cleanup always runs:
+        - Clears timeout
+        - Restores UI
+        - Resets state
+      */
+      cleanup();
+    }
+  });
+
+  /*
+    ==============================
+    CLEANUP FUNCTION
+    ==============================
+    Ensures UI returns to idle state
+    regardless of success/failure.
+  */
+  function cleanup() {
+    clearTimeout(timeoutId);
+    spinner.style.display = "none";
+    button.disabled = false;
+    isRunning = false;
+    abortController = null;
+  }
+</script>
+
+</body>
+</html>

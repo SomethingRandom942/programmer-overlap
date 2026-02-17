@@ -1,30 +1,36 @@
 class solution():
 
     
-    def romanToInt(roman_string: str) -> int:
+    def romanToInt(s: str) -> int:
         """
 
         This function converts roman numbers to integers
     
         """
         roman_letters = {'I': 1, 'X': 10, 'V': 5, 'C': 100, 'L': 50, 'D': 500, 'M': 1000}
-        if (len(roman_string) >= 1 and len(roman_string) <= 15):
+        
+        if len(s) == 1:
+            return roman_letters.get(s)
+        
+        if (len(s) > 1 and len(s) <= 15):
 
             num = 0
-            count = len(roman_string)
+            count = len(s)
 
-            for letter in roman_string:
+            for letter in s:
 
                 if letter not in roman_letters:
                     return -1
+            
                 
-                
-                if count >= 2 and roman_letters.get(letter) < roman_letters.get(roman_string[roman_string.find(letter) + 1]):
+                if ((count >= 2 or s[s.find(letter)] == s[-2]) and roman_letters.get(letter) < roman_letters.get(s[s.find(letter) + 1])):
                     num -= roman_letters.get(letter)
                     count -= 2
+                    s = s[s.find(letter):]
                 else:
                     num += roman_letters.get(letter)
                     count -= 1
+                    s = s[s.find(letter):]
         
             return num
         return -1

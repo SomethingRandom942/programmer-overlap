@@ -1,0 +1,46 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "admin",
+      "password": "admin123"
+    },
+    {
+      "id": 2,
+      "username": "alice",
+      "password": "alice123"
+    },
+    {
+      "id": 3,
+      "username": "bob",
+      "password": "bob12345"
+    },
+    {
+      "id": 4,
+      "username": "charlie",
+      "password": "charlie123"
+    },
+    {
+      "id": 5,
+      "username": "diana",
+      "password": "diana123"
+    }
+  ],
+  "subscriptions": [
+    {
+      "id": 1,
+      "userId": 1,
+      "plan": "premium"
+    },
+    {
+      "id": 2,
+      "userId": 2,
+      "plan": "basic"
+    },
+    {
+      "id": 3,
+      "userId": 3,
+      "plan": "premium"
+    }
+  ]
+}
